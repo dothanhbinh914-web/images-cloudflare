@@ -503,6 +503,12 @@
     </div>
 
     <div class="field">
+      <label>Worker URL</label>
+      <input id="cfg-worker" type="text" placeholder="https://cf-gallery-api.ten-ban.workers.dev" />
+      <span style="font-size:12px;color:var(--muted);margin-top:4px;display:block;">URL của Cloudflare Worker sau khi deploy</span>
+    </div>
+
+    <div class="field">
       <label>Account ID</label>
       <input id="cfg-account-id" type="text" placeholder="" />
     </div>
@@ -637,6 +643,7 @@
 
 <script>
   const CF = {
+    workerUrl: '',
     accountId: '',
     hash: '',
     token: '',
@@ -650,17 +657,19 @@
 
   // ── Config ──────────────────────────────────────────
   function loadConfig() {
+    CF.workerUrl = localStorage.getItem('cf_worker_url') || '';
     CF.accountId = localStorage.getItem('cf_account_id') || '';
     CF.hash      = localStorage.getItem('cf_hash')       || '';
     CF.token     = localStorage.getItem('cf_token')      || '';
     CF.variant   = localStorage.getItem('cf_variant')    || 'public';
 
-    if (CF.accountId && CF.token) {
+    if (CF.workerUrl && CF.accountId && CF.token) {
       document.getElementById('setup-overlay').style.display = 'none';
+      document.getElementById('cfg-worker').value     = CF.workerUrl;
       document.getElementById('cfg-account-id').value = CF.accountId;
-      document.getElementById('cfg-hash').value        = CF.hash;
-      document.getElementById('cfg-token').value       = CF.token;
-      document.getElementById('cfg-variant').value     = CF.variant;
+      document.getElementById('cfg-hash').value       = CF.hash;
+      document.getElementById('cfg-token').value      = CF.token;
+      document.getElementById('cfg-variant').value    = CF.variant;
       fetchImages();
     } else {
       document.getElementById('loading-state').style.display = 'none';
@@ -668,21 +677,24 @@
   }
 
   function saveConfig() {
+    const workerUrl = document.getElementById('cfg-worker').value.trim().replace(/\/$/, '');
     const accountId = document.getElementById('cfg-account-id').value.trim();
     const hash      = document.getElementById('cfg-hash').value.trim();
     const token     = document.getElementById('cfg-token').value.trim();
     const variant   = document.getElementById('cfg-variant').value.trim() || 'public';
 
-    if (!accountId || !token) {
-      showToast('Vui lòng nhập Account ID và API Token', 'error');
+    if (!workerUrl || !accountId || !token) {
+      showToast('Vui lòng nhập Worker URL, Account ID và API Token', 'error');
       return;
     }
 
+    CF.workerUrl = workerUrl;
     CF.accountId = accountId;
     CF.hash      = hash;
     CF.token     = token;
     CF.variant   = variant;
 
+    localStorage.setItem('cf_worker_url', workerUrl);
     localStorage.setItem('cf_account_id', accountId);
     localStorage.setItem('cf_hash',       hash);
     localStorage.setItem('cf_token',      token);
@@ -698,7 +710,7 @@
 
   // ── API ──────────────────────────────────────────────
   function proxyUrl(action, extra = '') {
-    const base = `api.php?action=${action}&token=${encodeURIComponent(CF.token)}&account_id=${encodeURIComponent(CF.accountId)}`;
+    const base = `${CF.workerUrl}?action=${action}&token=${encodeURIComponent(CF.token)}&account_id=${encodeURIComponent(CF.accountId)}`;
     return base + (extra ? '&' + extra : '');
   }
 
@@ -930,7 +942,7 @@
     try {
       const fd = new FormData();
       fd.append('url', imageUrl);
-      const res  = await fetch(`api.php?action=upload_url&token=${encodeURIComponent(CF.token)}&account_id=${encodeURIComponent(CF.accountId)}`, {
+      const res  = await fetch(`${CF.workerUrl}?action=upload_url&token=${encodeURIComponent(CF.token)}&account_id=${encodeURIComponent(CF.accountId)}`, {
         method: 'POST', body: fd
       });
       const data = await res.json();
@@ -960,7 +972,7 @@
       const fd = new FormData();
       fd.append('file', file);
       try {
-        const res  = await fetch(`api.php?action=upload_file&token=${encodeURIComponent(CF.token)}&account_id=${encodeURIComponent(CF.accountId)}`, {
+        const res  = await fetch(`${CF.workerUrl}?action=upload_file&token=${encodeURIComponent(CF.token)}&account_id=${encodeURIComponent(CF.accountId)}`, {
           method: 'POST', body: fd
         });
         const data = await res.json();
